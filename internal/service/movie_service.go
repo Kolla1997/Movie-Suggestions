@@ -81,7 +81,7 @@ STRICT RULES:
      • "flop"/"underrated": Rating (high→low)
 
 6. QUALITY CONTROL:
-   - MUST reach 100 verified entries
+   - MUST reach 10 verified entries
    - Include obscure films if needed
    - NO commentary/explanations
 
