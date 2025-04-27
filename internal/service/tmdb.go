@@ -78,20 +78,8 @@ func fetchMovieFromTMDB(title, langCode, year string) (map[string]interface{}, e
 	}
 
 	// Extract hero, heroine, and cast
-	var hero, heroine string
-	var heroPhoto, heroinePhoto string
-	var heroCharacter, heroineCharacter string
 	var cast []map[string]string
-	for i, member := range creditsData.Cast {
-		if i == 0 {
-			hero = member.Name
-			heroCharacter = member.Character
-			heroPhoto = "https://image.tmdb.org/t/p/w500" + member.ProfilePath
-		} else if i == 1 {
-			heroine = member.Name
-			heroineCharacter = member.Character
-			heroinePhoto = "https://image.tmdb.org/t/p/w500" + member.ProfilePath
-		}
+	for _, member := range creditsData.Cast {
 		cast = append(cast, map[string]string{
 			"name":        member.Name,
 			"character":   member.Character,
@@ -100,18 +88,12 @@ func fetchMovieFromTMDB(title, langCode, year string) (map[string]interface{}, e
 	}
 
 	return map[string]interface{}{
-		"movie_name":        m.Title,
-		"image_url":         "https://image.tmdb.org/t/p/w500" + m.PosterPath,
-		"rating":            fmt.Sprintf("%.1f", m.VoteAverage),
-		"plot":              m.Overview,
-		"release_date":      m.ReleaseDate,
-		"language":          m.OriginalLanguage,
-		"hero":              hero,
-		"hero_character":    heroCharacter,
-		"hero_photo":        heroPhoto,
-		"heroine":           heroine,
-		"heroine_character": heroineCharacter,
-		"heroine_photo":     heroinePhoto,
-		"movie_cast":        cast,
+		"movie_name":   m.Title,
+		"image_url":    "https://image.tmdb.org/t/p/w500" + m.PosterPath,
+		"rating":       fmt.Sprintf("%.1f", m.VoteAverage),
+		"plot":         m.Overview,
+		"release_date": m.ReleaseDate,
+		"language":     m.OriginalLanguage,
+		"movie_cast":   cast,
 	}, nil
 }

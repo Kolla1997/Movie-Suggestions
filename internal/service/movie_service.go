@@ -31,10 +31,13 @@ func parseFormattedMovies(raw string) []model.ParsedMovie {
 
 	return movies
 }
-func GetMovieSuggestionsList(req model.MovieRequest) ([]map[string]interface{}, error) {
+func GetMovieSuggestionsList(req model.MovieRequest, page int) ([]map[string]interface{}, error) {
 	config := openai.DefaultConfig(os.Getenv("DEEPSEEK_API_KEY"))
 	config.BaseURL = os.Getenv("DEEPSEEK_API_BASE_URL")
 	client := openai.NewClientWithConfig(config)
+
+	startIndex := (page - 1) * 10
+	endIndex := startIndex + 10
 
 	prompt := fmt.Sprintf(`
 Given:
@@ -42,8 +45,9 @@ Hero: %s
 Genre: %s
 Language: %s
 Reception: %s
+Time of day: %s
 
-Return EXACTLY 10 movies in this STRICT format:
+Return EXACTLY 100 movies in this STRICT format:
 "Title (Year) [ISO_Language_Code], Title (Year) [ISO_Language_Code], ..."
 
 STRICT RULES:
@@ -86,15 +90,23 @@ STRICT RULES:
    - Include obscure films if needed
    - NO commentary/explanations
 
+7. DAY TIME SPECIFICITY:
+	- If "time of day" is specified "Yes" consider the following:
+		- "Morning" (6 AM - 12 PM): Motivational, feel-good films
+		- "Afternoon" (12 PM - 6 PM): Comedy, family-friendly films
+		- "Evening" (6 PM - 12 AM): Action, thriller, or drama
+		- "Night" (12 AM - 6 AM): Horror, suspense, Romantic or mystery films
+
 FAILURE CASES TO AVOID:
 - "Ante Sundaraniki" for action
 - "Devara (2024)" for underrated
 - "NTR 31", "Prabhas 25" etc.
 - Mixed reception films
 
+Return ONLY movies %d to %d in the list.
 `,
-		req.Hero, req.Genre, req.Language, req.Reception,
-		req.Language)
+		req.Hero, req.Genre, req.Language, req.Reception, req.TimeOfDay,
+		req.Language, startIndex+1, endIndex)
 
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model: "deepseek-chat",
@@ -114,11 +126,17 @@ FAILURE CASES TO AVOID:
 	parsedMovies := parseFormattedMovies(raw)
 	fmt.Println("Parsed movies:", parsedMovies)
 
+	uniqueMovies := make(map[string]bool)
 	var results []map[string]interface{}
 
 	for _, m := range parsedMovies {
+		key := fmt.Sprintf("%s (%s)", m.Title, m.Year)
+		if _, exists := uniqueMovies[key]; exists {
+			continue // Skip duplicates
+		}
 		data, err := fetchMovieFromTMDB(m.Title, m.Language, m.Year)
 		if err == nil && data != nil {
+			uniqueMovies[key] = true
 			results = append(results, data)
 		}
 	}
