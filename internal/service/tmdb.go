@@ -9,6 +9,7 @@ import (
 )
 
 type tmdbMovie struct {
+	ID               int     `json:"id"`
 	Title            string  `json:"title"`
 	Overview         string  `json:"overview"`
 	VoteAverage      float64 `json:"vote_average"`
@@ -57,12 +58,60 @@ func fetchMovieFromTMDB(title, langCode, year string) (map[string]interface{}, e
 		return nil, nil
 	}
 
+	// Fetch movie credits to get hero, heroine, and cast
+	creditsURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/credits?api_key=%s", m.ID, apiKey)
+	creditsResp, err := http.Get(creditsURL)
+	if err != nil {
+		return nil, err
+	}
+	defer creditsResp.Body.Close()
+
+	var creditsData struct {
+		Cast []struct {
+			Name        string `json:"name"`
+			Character   string `json:"character"`
+			ProfilePath string `json:"profile_path"`
+		} `json:"cast"`
+	}
+	if err := json.NewDecoder(creditsResp.Body).Decode(&creditsData); err != nil {
+		return nil, err
+	}
+
+	// Extract hero, heroine, and cast
+	var hero, heroine string
+	var heroPhoto, heroinePhoto string
+	var heroCharacter, heroineCharacter string
+	var cast []map[string]string
+	for i, member := range creditsData.Cast {
+		if i == 0 {
+			hero = member.Name
+			heroCharacter = member.Character
+			heroPhoto = "https://image.tmdb.org/t/p/w500" + member.ProfilePath
+		} else if i == 1 {
+			heroine = member.Name
+			heroineCharacter = member.Character
+			heroinePhoto = "https://image.tmdb.org/t/p/w500" + member.ProfilePath
+		}
+		cast = append(cast, map[string]string{
+			"name":        member.Name,
+			"character":   member.Character,
+			"profile_url": "https://image.tmdb.org/t/p/w500" + member.ProfilePath,
+		})
+	}
+
 	return map[string]interface{}{
-		"movie_name":   m.Title,
-		"image_url":    "https://image.tmdb.org/t/p/w500" + m.PosterPath,
-		"rating":       fmt.Sprintf("%.1f", m.VoteAverage),
-		"plot":         m.Overview,
-		"release_date": m.ReleaseDate,
-		"language":     m.OriginalLanguage,
+		"movie_name":        m.Title,
+		"image_url":         "https://image.tmdb.org/t/p/w500" + m.PosterPath,
+		"rating":            fmt.Sprintf("%.1f", m.VoteAverage),
+		"plot":              m.Overview,
+		"release_date":      m.ReleaseDate,
+		"language":          m.OriginalLanguage,
+		"hero":              hero,
+		"hero_character":    heroCharacter,
+		"hero_photo":        heroPhoto,
+		"heroine":           heroine,
+		"heroine_character": heroineCharacter,
+		"heroine_photo":     heroinePhoto,
+		"movie_cast":        cast,
 	}, nil
 }

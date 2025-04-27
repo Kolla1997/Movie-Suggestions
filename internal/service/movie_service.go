@@ -38,11 +38,12 @@ func GetMovieSuggestionsList(req model.MovieRequest) ([]map[string]interface{}, 
 
 	prompt := fmt.Sprintf(`
 Given:
+Hero: %s
 Genre: %s
 Language: %s
 Reception: %s
 
-Return EXACTLY 100 movies in this STRICT format:
+Return EXACTLY 10 movies in this STRICT format:
 "Title (Year) [ISO_Language_Code], Title (Year) [ISO_Language_Code], ..."
 
 STRICT RULES:
@@ -81,7 +82,7 @@ STRICT RULES:
      • "flop"/"underrated": Rating (high→low)
 
 6. QUALITY CONTROL:
-   - MUST reach 10 verified entries
+   - MUST reach 100 verified entries
    - Include obscure films if needed
    - NO commentary/explanations
 
@@ -92,7 +93,7 @@ FAILURE CASES TO AVOID:
 - Mixed reception films
 
 `,
-		req.Genre, req.Language, req.Reception,
+		req.Hero, req.Genre, req.Language, req.Reception,
 		req.Language)
 
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
