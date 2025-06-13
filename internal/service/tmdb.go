@@ -9,6 +9,7 @@ import (
 )
 
 type tmdbMovie struct {
+	ID               int     `json:"id"`
 	Title            string  `json:"title"`
 	Overview         string  `json:"overview"`
 	VoteAverage      float64 `json:"vote_average"`
@@ -57,6 +58,35 @@ func fetchMovieFromTMDB(title, langCode, year string) (map[string]interface{}, e
 		return nil, nil
 	}
 
+	// Fetch movie credits to get hero, heroine, and cast
+	creditsURL := fmt.Sprintf("https://api.themoviedb.org/3/movie/%d/credits?api_key=%s", m.ID, apiKey)
+	creditsResp, err := http.Get(creditsURL)
+	if err != nil {
+		return nil, err
+	}
+	defer creditsResp.Body.Close()
+
+	var creditsData struct {
+		Cast []struct {
+			Name        string `json:"name"`
+			Character   string `json:"character"`
+			ProfilePath string `json:"profile_path"`
+		} `json:"cast"`
+	}
+	if err := json.NewDecoder(creditsResp.Body).Decode(&creditsData); err != nil {
+		return nil, err
+	}
+
+	// Extract hero, heroine, and cast
+	var cast []map[string]string
+	for _, member := range creditsData.Cast {
+		cast = append(cast, map[string]string{
+			"name":        member.Name,
+			"character":   member.Character,
+			"profile_url": "https://image.tmdb.org/t/p/w500" + member.ProfilePath,
+		})
+	}
+
 	return map[string]interface{}{
 		"movie_name":   m.Title,
 		"image_url":    "https://image.tmdb.org/t/p/w500" + m.PosterPath,
@@ -64,5 +94,6 @@ func fetchMovieFromTMDB(title, langCode, year string) (map[string]interface{}, e
 		"plot":         m.Overview,
 		"release_date": m.ReleaseDate,
 		"language":     m.OriginalLanguage,
+		"movie_cast":   cast,
 	}, nil
 }
